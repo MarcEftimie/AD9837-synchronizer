@@ -1,40 +1,3 @@
-// #include <pico/time.h>
-// #include <hardware/pwm.h>
-// #include <SPI.h>
-
-// // AD9837 SPI configuration
-// bool setCS(5);
-// bool setSCK(2);
-// bool setTX(3);;
-
-// SPISettings spiSettings(100000, MSBFIRST, SPI_MODE2);
-
-// // Clock Configuration
-// const uint8_t CLOCK_PIN = 0;
-// const uint32_t CLOCK_FREQUENCY = 1000000;
-// const uint32_t PICO_CLOCK_FREQUENCY = 125000000;
-// const double CLOCK_WRAP = (PICO_CLOCK_FREQUENCY/CLOCK_FREQUENCY);
-
-// void setup() {
-//   // Configure clock signal
-//   gpio_set_function(CLOCK_PIN, GPIO_FUNC_PWM);
-  
-//   // Get PWM slice for the clock pin
-//   uint slice_num = pwm_gpio_to_slice_num(CLOCK_PIN);
-  
-//   pwm_set_enabled(slice_num, true);
-
-//   pwm_set_wrap(slice_num, CLOCK_WRAP);
-
-//   pwm_set_chan_level(slice_num, PWM_CHAN_A, CLOCK_WRAP/2);
-
-//   // Initialize SPI
-//   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE2));
-// }
-
-// void loop() {
-// }
-
 #include <pico/time.h>
 #include <hardware/pwm.h>
 #include <SPI.h>
@@ -55,10 +18,12 @@ const uint8_t CLOCK_PIN = 0;
 const uint32_t CLOCK_FREQUENCY = 1000000;
 const uint32_t PICO_CLOCK_FREQUENCY = 125000000;
 const double CLOCK_WRAP = (PICO_CLOCK_FREQUENCY / CLOCK_FREQUENCY);
-
-SPISettings spiSettings(100000, MSBFIRST, SPI_MODE2);
+uint32_t copy_freq;
+SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE2);
 
 void setup() {
+  Serial.begin(9600);
+  while (!Serial);
   // Configure clock signal
   gpio_set_function(CLOCK_PIN, GPIO_FUNC_PWM);
 
@@ -78,7 +43,7 @@ void setup() {
   SPI.beginTransaction(spiSettings);
 
   // Configure AD9837
-  uint32_t frequency = 5000; // 100 kHz output frequency
+  uint32_t frequency = 100000; // 100 kHz output frequency
   uint32_t phase = 0; // 0-degree phase
 
   uint32_t freq_word = (uint32_t)((double)frequency * 268435456.0 / (double)CLOCK_FREQUENCY);
@@ -87,9 +52,9 @@ void setup() {
 
   uint16_t p_word = (uint16_t)((double)phase / 360.0 * 4096.0);
   uint16_t p_reg = p_word | AD9837_PHASE0;
-
-  writeRegister(AD9837_B28); // Enable 28-bit frequency mode
   writeRegister(AD9837_RESET); // Reset AD9837
+  writeRegister(AD9837_B28); // Enable 28-bit frequency mode
+  
   writeRegister(f_lsb); // Write frequency LSB
   writeRegister(f_msb); // Write frequency MSB
   writeRegister(p_reg); // Write phase
@@ -97,7 +62,6 @@ void setup() {
 }
 
 void loop() {
-  // No need to do anything in the loop; the sine wave is generated automatically
 }
 
 void writeRegister(uint16_t data) {
