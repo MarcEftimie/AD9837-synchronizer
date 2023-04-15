@@ -2,6 +2,10 @@
 #include <hardware/pwm.h>
 #include <SPI.h>
 
+// Setup Switch Pins
+const uint8_t SWITCH_1 = 16;
+const uint8_t SWITCH_2 = 17;
+
 // AD9837 SPI configuration
 const uint8_t SPI_CS = 5;
 const uint8_t SPI_SCK = 18;
@@ -28,6 +32,7 @@ SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE2);
 void setup() {
   Serial.begin(9600);
   while (!Serial);
+  delay(3000);
 
   // Initialize Clock
   gpio_set_function(CLOCK_PIN, GPIO_FUNC_PWM); // Enable GPIO port to PWM
@@ -48,6 +53,13 @@ void setup() {
   SPI.begin();
   SPI.beginTransaction(spiSettings);
 
+  // Initialize Switch Pins
+  pinMode(SWITCH_1, OUTPUT);
+  pinMode(SWITCH_2, OUTPUT);
+
+  digitalWrite(SWITCH_1, HIGH);
+  digitalWrite(SWITCH_2, LOW);
+
   // Configure AD9837
   uint32_t frequency_word = (uint32_t)((double)FREQUENCY * 268435456.0 / (double)CLOCK_FREQUENCY);
   uint16_t frequency_lsb = (frequency_word & 0x3FFF) | AD9837_FREQ0;
@@ -56,35 +68,32 @@ void setup() {
   uint16_t phase_word = (uint16_t)((double)PHASE / 360.0 * 4096.0);
   uint16_t phase_reg = phase_word | AD9837_PHASE0;
 
-  // Set frequency and phase of first AD9837
-  digitalWrite(SPI_CS, LOW);
-  SPI.transfer16(AD9837_RESET);
-  digitalWrite(SPI_CS, HIGH);
-  writeRegister(AD9837_B28, true); // Enable 28-bit frequency mode
-  writeRegister(frequency_lsb, true); // Write frequency LSB
-  writeRegister(frequency_msb, true); // Write frequency MSB
-  writeRegister(phase_reg, true); // Write phase
-  writeRegister(0, true); // Clear reset bit
+  // Sync frequency and phase of both AD9837s
+  writeRegister(AD9837_B28); // Enable 28-bit frequency mode
+  writeRegister(AD9837_RESET);
+  
+  writeRegister(frequency_lsb); // Write frequency LSB
+  writeRegister(frequency_msb); // Write frequency MSB
+  writeRegister(phase_reg); // Write phase
+  writeRegister(0); // Clear reset bit
 
-  // Set frequency and phase of second AD9837
-  writeRegister(AD9837_B28, false); // Enable 28-bit frequency mode
-  writeRegister(frequency_lsb, false); // Write frequency LSB
-  writeRegister(frequency_msb, false); // Write frequency MSB
-  writeRegister(phase_reg, false); // Write phase
-  writeRegister(0, false); // Clear reset bit
+  // Disconnect CS from 2nd AD9837s
+  digitalWrite(SWITCH_1, LOW);
+  
+  // Pull CS for 2nd AD9837 HIGH 
+  digitalWrite(SWITCH_2, HIGH);
+
+  // Increase the phase of the second AD9837 by 90 degrees
+  phase_word = (uint16_t)((double)(PHASE + 90) / 360.0 * 4096.0);
+  phase_reg = phase_word | AD9837_PHASE0;
+  writeRegister(phase_reg); // Write phase
 }
 
 void loop() {
 }
 
-void writeRegister(uint16_t data, bool first_ad9837) {
-  if (first_ad9837) {
-    digitalWrite(SPI_CS, LOW);
-    SPI.transfer16(data);
-    digitalWrite(SPI_CS, HIGH);
-  } else {
-    digitalWrite(SPI_CS, LOW);
-    SPI.transfer16(data);
-    digitalWrite(SPI_CS, HIGH);
-  }
+void writeRegister(uint16_t data) {
+  digitalWrite(SPI_CS, LOW);
+  SPI.transfer16(data);
+  digitalWrite(SPI_CS, HIGH);
 }
