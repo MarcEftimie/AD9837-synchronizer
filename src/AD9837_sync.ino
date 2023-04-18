@@ -27,6 +27,9 @@ const double CLOCK_WRAP = (PWM_CHANNEL_FREQUENCY / CLOCK_FREQUENCY);
 uint32_t FREQUENCY = 50000; // Hz
 uint32_t PHASE = 0; // Degrees
 
+// CHANGE THIS VALUE
+uint32_t PHASE_DIFF = 90; // Degrees
+
 SPISettings spiSettings(1000000, MSBFIRST, SPI_MODE2);
 
 void setup() {
@@ -84,7 +87,7 @@ void setup() {
   digitalWrite(SWITCH_2, HIGH);
 
   // Increase the phase of the second AD9837 by 90 degrees
-  phase_word = (uint16_t)((double)(PHASE + 90) / 360.0 * 4096.0);
+  phase_word = (uint16_t)((double)(PHASE + PHASE_DIFF) / 360.0 * 4096.0);
   phase_reg = phase_word | AD9837_PHASE0;
   writeRegister(phase_reg); // Write phase
 }
